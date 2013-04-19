@@ -147,16 +147,16 @@ use windowed mode instead?", "londontown", MB_YESNO | MB_ICONEXCLAMATION) == IDY
 	AdjustWindowRectEx(&windowRect, dwStyle, FALSE, dwExStyle);
 
 	if (!(hWnd = CreateWindowEx(dwExStyle,
-								"londontown",
-								title,
-								WS_CLIPSIBLINGS | WS_CLIPCHILDREN | dwStyle,
-								0, 0,
-								windowRect.right - windowRect.left,
-								windowRect.bottom - windowRect.top,
-								NULL,
-								NULL,
-								hInstance,
-								NULL))) {
+				"londontown",
+				title,
+				WS_CLIPSIBLINGS | WS_CLIPCHILDREN | dwStyle,
+				0, 0,
+				windowRect.right - windowRect.left,
+				windowRect.bottom - windowRect.top,
+				NULL,
+				NULL,
+				hInstance,
+				NULL))) {
 		killGL();
 		MessageBox(NULL, "window creation error.", "error", MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
