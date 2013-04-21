@@ -18,6 +18,70 @@ BOOL keys[256];
 BOOL active = TRUE;
 BOOL isfullscreen = FALSE;
 
+BOOL light;
+BOOL lp, fp;
+
+GLfloat xrot, yrot;
+GLfloat xspeed, yspeed;
+GLfloat z = -5.0f;
+
+GLfloat lightAmbient[] = {0.5f, 0.5f, 0.5f, 1.0f};
+GLfloat lightDiffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+GLfloat lightPosition[] = {0.0f, 0.0f, 2.0f, 1.0f};
+
+GLuint filter;
+GLuint texture[3];
+
+AUX_RGBImageRec * loadBMP(char * filename) {
+	FILE *fp = NULL;
+
+	fp = fopen(filename, "r");
+	if (fp) {
+		fclose(fp);
+		return auxDIBImageLoad(filename);
+	}
+	return NULL;
+}
+
+int loadGLTextures() {
+	AUX_RGBImageRec * textureImage[1];
+	memset(textureImage, 0, sizeof(void *));
+	int status = FALSE;
+
+	if(textureImage[0] = loadBMP("data/crate.bmp")) {
+		status = true;
+		glGenTextures(3, &texture[0]);
+
+		glBindTexture(GL_TEXTURE_2D, texture[0]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->sizeX, textureImage[0]->sizeY, 
+			0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
+
+		glBindTexture(GL_TEXTURE_2D, texture[1]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->sizeX, textureImage[0]->sizeY, 
+			0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
+
+		glBindTexture(GL_TEXTURE_2D, texture[2]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+		gluBuild2DMipmaps(GL_TEXTURE_2D, 3,  textureImage[0]->sizeX, textureImage[0]->sizeY, 
+			GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
+	}
+
+	if (textureImage[0]) {
+		if (textureImage[0]->data) {
+			free(textureImage[0]->data);
+		}
+		free(textureImage[0]);
+	}
+
+	return status;
+}
+
 LRESULT CALLBACK WndProc (HWND, UINT, WPARAM, LPARAM);
 
 GLvoid resizeGL(GLsizei width, GLsizei height) {
@@ -38,19 +102,100 @@ GLvoid resizeGL(GLsizei width, GLsizei height) {
 
 // all setup for OpenGL goes here
 int initGL(GLvoid) {
+	if (!loadGLTextures())
+		return FALSE;
+
+	glEnable(GL_TEXTURE_2D);
 	glShadeModel(GL_SMOOTH);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClearDepth(1.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
-
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+	
+	glLightfv(GL_LIGHT1, GL_AMBIENT, lightAmbient);
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, lightDiffuse);
+	glLightfv(GL_LIGHT1, GL_POSITION, lightPosition);
+	glEnable(GL_LIGHT1);
+
 	return TRUE;
 }
 
 int drawGL(GLvoid) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
+
+	glTranslatef(0.0f, 0.0f, z);
+
+	glRotatef(xrot, 1.0f, 0.0f, 0.0f);
+	glRotatef(yrot, 0.0f, 1.0f, 0.0f);
+
+	glBindTexture(GL_TEXTURE_2D, texture[filter]);
+	glBegin(GL_QUADS);
+		// front
+		glNormal3f(0.0f, 0.0f, 1.0f);
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f(-1.0f, -1.0f, 1.0f);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f(1.0f, -1.0f, 1.0f);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f(1.0f, 1.0f, 1.0f);
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f(-1.0f, 1.0f, 1.0f);
+		// black
+		glNormal3f(0.0f, 0.0f, -1.0f);
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f(1.0f, -1.0f, -1.0f);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f(-1.0f, -1.0f, -1.0f);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f(-1.0f, 1.0f, -1.0f);
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f(1.0f, 1.0f, -1.0f);
+		// top
+		glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f(-1.0f, 1.0f, 1.0f);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f(1.0f, 1.0f, 1.0f);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f(1.0f, 1.0f, -1.0f);
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f(-1.0f, 1.0f, -1.0f);
+		// bottom
+		glNormal3f(0.0f, -1.0f, 0.0f);
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f(-1.0f, -1.0f, -1.0f);
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f(-1.0f, -1.0f, 1.0f);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f(1.0f, -1.0f, 1.0f);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f(1.0f, -1.0f, -1.0f);
+		// left
+		glNormal3f(-1.0f, 0.0f, 0.0f);
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f(-1.0f, -1.0f, -1.0f);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f(-1.0f, -1.0f, 1.0f);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f(-1.0f, 1.0f, 1.0f);
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f(-1.0f, 1.0f, -1.0f);
+		// right
+		glNormal3f(1.0f, 0.0f, 0.0f);
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f(1.0f, -1.0f, 1.0f);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f(1.0f, -1.0f, -1.0f);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f(1.0f, 1.0f, -1.0f);
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f(1.0f, 1.0f, 1.0f);
+	glEnd();
+
+	xrot += xspeed;
+	yrot += yspeed;
 	return TRUE;
 }
 
@@ -292,14 +437,46 @@ int WINAPI WinMain(HINSTANCE hInstance,
 				else {
 					drawGL();
 					SwapBuffers(hDC);
-				}
-				if (keys[VK_F1]) {
-					keys[VK_F1] = FALSE;
-					killGL();
-					isfullscreen = !isfullscreen;
 
-					if (!createGL("Lua's OpenGL Framework", 640, 480, 16, isfullscreen))
-						return 0;
+					if (keys['L'] && !lp) {
+						lp = TRUE;
+						light = !light;
+
+						if (!light)
+							glDisable(GL_LIGHTING);
+						else
+							glEnable(GL_LIGHTING);
+					}
+					if (!keys['L'])
+						lp = FALSE;
+					if (keys['F'] && !fp) {
+						fp = TRUE;
+						filter += 1;
+						if (filter > 2)
+							filter = 0;
+					}
+					if (!keys['F'])
+						fp = FALSE;
+					if (keys[VK_PRIOR])
+						z -= 0.02f;
+					if (keys[VK_NEXT])
+						z += 0.02f;
+					if (keys[VK_UP])
+						xspeed -= 0.0f;
+					if (keys[VK_DOWN])
+						xspeed += 0.01f;
+					if (keys[VK_RIGHT])
+						yspeed += 0.01f;
+					if (keys[VK_LEFT])
+						yspeed -= 0.01f;
+					if (keys[VK_F1]) {
+						keys[VK_F1] = FALSE;
+						killGL();
+						isfullscreen = !isfullscreen;
+
+						if (!createGL("Lua's OpenGL Framework", 640, 480, 16, isfullscreen))
+							return 0;
+					}
 				}
 			}
 		}
