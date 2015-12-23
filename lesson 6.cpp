@@ -1,13 +1,12 @@
 #include <windows.h>
 #include <stdio.h>
 
-#include <gl\gl.h>
-#include <gl\glu.h>
-#include <gl\glut.h>
-#include <gl\glaux.h>
+#include <GL\glew.h>
+#include <GL\glut.h>
 
-#pragma comment(linker, "/subsystem:windows /entry:WinMainCRTStartup")
-#pragma comment(lib, "glaux.lib")
+#include "cv.h"
+#include "cxcore.h"
+#include "highgui.h"
 
 HGLRC hRC = NULL;
 HDC hDC = NULL;
@@ -23,58 +22,40 @@ GLuint texture[1];
 
 LRESULT CALLBACK WndProc (HWND, UINT, WPARAM, LPARAM);
 
-AUX_RGBImageRec * loadBMP(char * filename) {
-	FILE *fp = NULL;
-
-	fp = fopen(filename, "r");
-	if (fp) {
-		fclose(fp);
-		return auxDIBImageLoad(filename);
-	}
-	return NULL;
-}
 
 int loadGLTextures() {
-	AUX_RGBImageRec * textureImage[1];
-	memset(textureImage, 0, sizeof(void *));
 	int status = FALSE;
+	IplImage* textureImage[1];
+	if(textureImage[0] = cvLoadImage("../tools/images/icon.png")) {
+		cvCvtColor(textureImage[0], textureImage[0], CV_BGR2RGB);
 
-	if(textureImage[0] = loadBMP("data/ctr.bmp")) {
 		status = true;
 		glGenTextures(1, &texture[0]);
 		glBindTexture(GL_TEXTURE_2D, texture[0]);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->sizeX, textureImage[0]->sizeY, 
-			0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureImage[0]->width, textureImage[0]->height, 
+			0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->imageData);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	}
 
-	if (textureImage[0]) {
-		if (textureImage[0]->data) {
-			free(textureImage[0]->data);
-		}
-		free(textureImage[0]);
+		cvReleaseImage(&textureImage[0]);
 	}
-
 	return status;
 
 }
 
 GLvoid resizeGL(GLsizei width, GLsizei height) {
-		if (height == 0)
-			height = 1;
+	if (height == 0)
+		height = 1;
 
-		glViewport(0, 0, width, height);
+	glViewport(0, 0, width, height);
 
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
 
-		//
-		gluPerspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
-
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 }
 
 // all setup for OpenGL goes here
@@ -89,18 +70,22 @@ int initGL(GLvoid) {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+
 	return TRUE;
 }
 
 int drawGL(GLvoid) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	glLoadIdentity();
+
 	glTranslatef(0.0f, 0.0f, -5.0f);
 	glRotatef(xrot, 1.0f, 0.0f, 0.0f);
 	glRotatef(yrot, 0.0f, 1.0f, 0.0f);
 	glRotatef(zrot, 0.0f, 0.0f, 1.0f);
 
 	glBindTexture(GL_TEXTURE_2D, texture[0]);
+
 	glBegin(GL_QUADS);
 		// front
 		glTexCoord2f(0.0f, 0.0f);
@@ -158,14 +143,9 @@ int drawGL(GLvoid) {
 		glVertex3f(1.0f, -1.0f, -1.0f);
 	glEnd();
  
-	/*
-		总结：
-			2d纹理的方向由自己的视觉控制，最重要的是找到自己的视觉原点。
-			hope 展开的方向为正方向（例如一张图根据其左下角坐标来确定整张图的位置）
-	 */
-	xrot += 0.3f;
-	yrot += 0.2f;
-	zrot += 0.4f;
+	xrot += 0.03f;
+	yrot += 0.02f;
+	zrot += 0.04f;
 	return TRUE;
 }
 
